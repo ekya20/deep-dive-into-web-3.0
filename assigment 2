@@ -1,0 +1,102 @@
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.4.25 <0.7.0;
+
+contract MetaCoin {
+	mapping (address => uint256) balances;
+
+	event Transfer(address indexed _from, address indexed _to, uint256 _value);
+
+	constructor() public {
+		balances[tx.origin] = 100000;
+	}
+
+	function sendCoin(address receiver, uint256 amount, address sender) public  returns(bool sufficient) {
+		if (balances[sender] < amount) return false;
+		balances[sender] -= amount;
+		balances[receiver] += amount;
+		emit Transfer(sender, receiver, amount);
+		return true;
+	}
+
+
+	function getBalance(address addr) public view returns(uint256) {
+		return balances[addr];
+	}
+}
+
+contract Loan is MetaCoin {
+
+    mapping (address => uint256)  private  loans;
+     address[]   private  account;
+    mapping (address=>uint)private maxowesaddress;  
+
+    function fill_mapping(address payable _add,uint _amt)private{
+        loans[_add]=_amt;
+        account.push(_add);
+        maxowesaddress[_add]+=_amt;
+    }
+     
+    event Request(address indexed _from, uint256 P, uint R, uint T, uint256 amt);
+    
+    address private Owner;
+
+    
+    modifier isOwner() {
+        require(msg.sender==Owner,"you are not owner");
+
+        _;
+    }
+    
+    constructor() public {
+         Owner=msg.sender;
+    }
+    
+    function getMaxAddress()public view returns(address,uint){  
+        address maxowes;
+        uint maxx=0;
+        for(uint i=0;i<account.length;i++){
+            if(maxowesaddress[account[i]]>maxx){
+                maxowes=account[i];
+                maxx=maxowesaddress[account[i]];
+            }
+        }
+        return (maxowes,maxx);
+    }
+    
+    function getCompoundInterest(uint256 p, uint r, uint t) public pure returns(uint256) {
+    		uint e= p+=(p*r*t)/100;
+            return e;
+    }
+
+    function getOwnerBalance() public view returns(uint256) {
+			 return MetaCoin.getBalance(Owner);
+		}
+    
+    function reqLoan(uint256 p, uint r, uint t,address payable add) public returns(bool correct) {
+        uint256 toPay = getCompoundInterest(p, r, t);
+        if(getOwnerBalance()<toPay) return false;
+        emit Request(msg.sender,p,r,t,toPay);
+        fill_mapping(add,toPay);
+    }
+    
+    function fillloan(address payable    loan_add)public isOwner   returns(bool){
+        uint restloan = viewloan(loan_add);
+        if(restloan<=balances[Owner]){
+            loans[loan_add]=0;
+        }
+
+        return sendCoin(loan_add,restloan,msg.sender);
+
+    }
+    
+    function viewloan(address  _add)public isOwner  view returns(uint){
+        for(uint i=0;i<account.length;i++){
+            if(account[i]==_add){
+                return loans[_add];
+            }
+        }
+    }
+
+    
+    
+}
