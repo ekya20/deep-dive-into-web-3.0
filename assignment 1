@@ -1,0 +1,35 @@
+import hashlib
+import timeit
+
+start = timeit.default_timer()
+
+def funct(result):
+     if result[:5]=='00000':
+        return 1
+     else:
+        return 0;
+        
+    
+
+s=input()
+result = (hashlib.sha256(s.encode())).hexdigest()
+
+
+
+
+i=0
+k=0
+while True:
+    
+    if funct(result)==1:
+        print(k,result)
+        break
+    
+    k+=1
+   
+    result=hashlib.sha256((result+str(k)).encode())
+    result=result.hexdigest()
+
+
+stop = timeit.default_timer()
+print(stop-start)
